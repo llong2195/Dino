@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LK - Genetic LK</title>
+    <link rel="icon" href="./img/dino0000.png">
     <style>
         #stage {
             border: 1px solid red;
@@ -81,7 +82,6 @@
         let dinoDead = new Image();
         dinoDead.src = "./img/dinoDead.png";
         console.log(dinoDead, dinoDead.height, dinoDead.height);
-
         // cây xương rồng lớn
         let cactusBig = new Image(); //30 x 60
         cactusBig.src = "./img/cactusBig.png";
@@ -161,7 +161,6 @@
         window.onload = function() {
             setup();
             loop();
-            changeInterval();
         };
 
         function setup() {
@@ -189,18 +188,21 @@
 
                 a++;
                 score = Math.round(a / 10);
-                gen != 1 ? showBrain(player.input_hidden, player.hidden_output) : {};
+                if(gen != 1){
+                    showBrain(player.input_hidden, player.hidden_output);
+                }
+                
                 showNumbers();
 
                 if (player.state == 0) {
-                    alert("replay finished");
+                    alert(`Replay hoàn thành : Gen ${gen}`);
                     isReplay = false;
-                    isReplay = confirm("Do you want to replay a champion?");
+                    isReplay = confirm("Bạn Muốn Xem Lại Thế Hệ Không?");
                     if (isReplay) {
-                        replayGen = prompt("Which generation?");
+                        replayGen = prompt("Gen :");
                         player = championSaves[replayGen - 1];
                         player.state = 1;
-                        console.log(player); //(permanent)log the player for info
+                        console.log(player);
                         backToOriginal();
                     }
                 }
@@ -219,25 +221,26 @@
                     clearInterval(loop);
                 }
             } else if (!ifDone) {
-                if (stillAlive() == 0) { //when there's no one left
+                if (stillAlive() == 0) { // Tạo các thế hệ mới <=> Genetic
                     findSum();
                     population = newPop(popSize);
                     championSaves.push(champion);
                     console.log(championSaves);
-                    if (score >= targetScore) {
-                        ifDone = true;
-                        if (confirm("Do you want to continue evolving?")) {
-                            targetScore = prompt("What is the new target score?");
-                            ifDone = false;
-                        } else {
-                            isReplay = confirm("Do you want to replay a champion?");
-                            if (isReplay) {
-                                replayGen = prompt("Which generation?");
-                                player = championSaves[replayGen - 1];
-                                console.log(player); //(permanent)log the player for info
-                            }
-                        }
-                    }!isReplay ? gen++ : gen;
+
+                    alert(`Replay hoàn thành : Gen ${gen}`);
+                    isReplay = false;
+                    isReplay = confirm("Bạn Muốn Xem Lại Thế Hệ Không?");
+                    if (isReplay) {
+                        replayGen = prompt("Gen :");
+                        player = championSaves[replayGen - 1];
+                        player.state = 1;
+                        console.log(player);
+                        backToOriginal();
+                    }
+
+                    if (!isReplay){
+                        gen++;
+                    }
                     backToOriginal();
                 } else {
                     animate();
@@ -252,18 +255,19 @@
                     }
                     a++;
                     score = Math.round(a / 10);
-                    gen != 1 ? showBrain(champion.input_hidden, champion.hidden_output) : {};
+                    if(gen != 1){
+                        showBrain(champion.input_hidden, champion.hidden_output)
+                    }
                     showNumbers();
                 }
 
             } else {
-                replay();
                 ctx.drawImage(sky, 0, 0);
                 ctx.drawImage(ground, 0, groundLevel);
                 showNumbers();
             }
         }
-
+        
         // vẽ
         function animate() {
             drawGround(); // vẽ đường
@@ -287,14 +291,17 @@
         function stillAlive() {
             let n = 0;
             for (let i = 0; i < popSize; i++) {
-                population[i].state ? n++ : {};
+                if(population[i].state){
+                    n++;
+                }
             }
             return n;
         }
-
+        // reset game
         function backToOriginal() {
-            Math.sqrt(champion.fitness) >= highest ?
-                (highest = Math.sqrt(champion.fitness)) : {};
+            if(Math.sqrt(champion.fitness) >= highest){
+                highest = Math.sqrt(champion.fitness);
+            }
             obstacles = [];
             speed = 3;
             a = 0;

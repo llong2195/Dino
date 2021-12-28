@@ -15,7 +15,7 @@ function matrixZeros(rows, cols) {
 
 // rows , cols : maxtrix [rows][cols];
 // min , max : maxtrix [rows][cols] = [min, max]
-function matrixRandom(rows, cols, min, max) {//range from 0 - num
+function matrixRandom(rows, cols, min, max) {
     // gán giá trị của ma trận trong khoảng min - max
 
     let matrix = [];
@@ -41,7 +41,7 @@ function multiplyMatrix(m1, m2) {
     const m2Row = m2.length;
     const m2Col = m2[0].length;
 
-    //rows of the first matrix multiply the columns of the second matrix
+    
     for (let i = 0; i < m1Row; i++) {
         result[i] = []; // [][]
         // m1 * m2
