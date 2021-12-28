@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LK - Genetic LK</title>
+    <style>
+        #stage {
+            border: 1px solid red;
+            margin: 0 auto;
+            width: 840px;
+            height: 450px;
+            text-align: center;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="stage">
+        <canvas id="canvas" style="border: 0px solid blue" width="840" height="450"></canvas>
+    </div>
+    <div style="margin: 0 auto; display: block; text-align: center">
+        <p>Chạy lại với bot :</p>
+        <button onclick="isBot = !isBot; backToOriginal();">Chạy</button>
+    </div>
+    <div style="margin: 0 auto; display: block; text-align: center">
+        <p>Tốc Độ :</p>
+        <input type="range" id="slider" min="1" max="20" value="10" onchange="changeInterval()" />
+        <label for="slider" id="sliderVal"></label>
+    </div>
+
+
+    <!-- include obs : chướng ngại vật -->
+    <script type="text/javascript" src="./js/obs.js"></script>
+    <script type="text/javascript" src="./js/matrix.js"></script>
+    <script type="text/javascript" src="./js/drawData.js"></script>
+    <script type="text/javascript" src="./js/Genetic.js"></script>
+    <script type="text/javascript" src="./js/player.js"></script>
+    <script type="text/javascript" src="./js/bot.js"></script>
+
+    <script>
+        const $ = document.querySelectorAll.bind(document);
+        const canvas = $("#canvas")[0];
+        const ctx = canvas.getContext("2d");
+        ctx.font = "14px Lato"
+        // ====== định nghĩa các ảnh =======
+
+        // đường chạy
+        const ground = new Image();
+        ground.src = "./img/ground.png";
+        console.log(ground, ground.height, ground.height);
+        /// sky
+        const sky = new Image();
+        sky.src = "./img/sky.png";
+        // chạy
+        let dinoRun = []; //48 x 56
+        dinoRun[0] = new Image();
+        dinoRun[0].src = "./img/dinorun1.png";
+
+        dinoRun[1] = new Image();
+        dinoRun[1].src = "./img/dinorun2.png";
+        console.log(dinoRun, dinoRun[0].height, dinoRun[0].height);
+        // cúi
+        let dinoDuck = []; //68 x 34
+        dinoDuck[0] = new Image();
+        dinoDuck[0].src = "./img/dinoduck1.png";
+
+        dinoDuck[1] = new Image();
+        dinoDuck[1].src = "./img/dinoduck2.png";
+        console.log(dinoDuck, dinoDuck[0].height, dinoDuck[0].height);
+
+        // nhảy
+        let dinoJump = new Image(); //48 x 50
+        dinoJump.src = "./img/dinoJump.png";
+        console.log(dinoJump, dinoJump.height, dinoJump.height);
+
+        // dead
+        let dinoDead = new Image();
+        dinoDead.src = "./img/dinoDead.png";
+        console.log(dinoDead, dinoDead.height, dinoDead.height);
+
+        // cây xương rồng lớn
+        let cactusBig = new Image(); //30 x 60
+        cactusBig.src = "./img/cactusBig.png";
+        console.log(cactusBig, cactusBig.height, cactusBig.height);
+
+        // cây xương rồng nhỏ
+        let cactusSmall = new Image(); //23 x 45
+        cactusSmall.src = "./img/cactusSmall.png";
+        console.log(cactusSmall, cactusSmall.height, cactusSmall.height);
+
+        // nhiều cây xương rồng
+        let cactusSmallMany = new Image(); //72 x 48
+        cactusSmallMany.src = "./img/cactusSmallMany.png";
+        console.log(
+            cactusSmallMany,
+            cactusSmallMany.height,
+            cactusSmallMany.height
+        );
+
+        // chim
+        let bird = [];
+        bird[0] = new Image();
+        bird[0].src = "./img/bird1.png";
+        bird[1] = new Image();
+        bird[1].src = "./img/bird2.png";
+        console.log(bird, bird[0].height, bird[0].height);
+
+        let neuron = new Image();
+        neuron.src = "./img/neuron.png";
+
+        // ===== Các biến cần thiết ======
+        //  heigh đường : 200 + 150 : 350
+        //  obs : 350 - 10 (10 : phần đường dưới)
+        //  =>> groundLevel = 340;
+        //
+        //
+
+        let targetScore = 500; // mục tiêu
+        const groundLevel = 340; // độ cao ảnh
+        let speed = 3; // tốc độ đầu game
+        let interval = 10; // time lặp lại ||| Sleep(10)
+        let obstacles = []; // chướng ngại vật
+        const minimunGap = 150; // khoảng cách các chướng ngại vật
+        let hold = 0; // số lần loop : kiểm tra -> addObs : chướng ngại vật
+        let score = 0; // điểm bản đầu
+        let gen = 1; // thế hệ di truyền
+        let highest = 0;
+
+        // Game
+        let population = []; // player || bot
+        let championSaves = []; // thế hệ đã chọn lọc
+
+        let player = null; // player
+        let ifDone = false; // check xong
+        let champion = null; // player xịn
+        let championIndex = 0; // vị trí
+
+        let fitnesses = []; // đánh giá
+
+        let sum = 0; //
+
+        let popSize = 5; // số player
+        // let mutateRate = 0.15; // tỉ lệ đột biến
+        let mutateRate = 0.15; // tỉ lệ đột biến
+
+        const inputNodes = 6;
+        const hiddenNodes = 6;
+        const outputNodes = 3; //3 run, jump, duck
+
+        let isReplay = false;
+        let replayGen = 0;
+        let bot = new Bot();
+        let isBot = false;
+
+        ///
+
+        window.onload = function() {
+            setup();
+            loop();
+            changeInterval();
+        };
+
+        function setup() {
+            for (let i = 0; i < popSize; i++) {
+                population.push(new Player());
+                population[i].initializeBrain(); // khởi tạo player
+            }
+        }
+
+        function loop() {
+            inloop();
+            setTimeout("loop()", parseInt(interval));
+        }
+
+        let a = 0;
+
+        function inloop() {
+
+            if (isReplay) {
+                animate();
+                player.collide();
+                player.draw();
+                player.look();
+                player.think();
+
+                a++;
+                score = Math.round(a / 10);
+                gen != 1 ? showBrain(player.input_hidden, player.hidden_output) : {};
+                showNumbers();
+
+                if (player.state == 0) {
+                    alert("replay finished");
+                    isReplay = false;
+                    isReplay = confirm("Do you want to replay a champion?");
+                    if (isReplay) {
+                        replayGen = prompt("Which generation?");
+                        player = championSaves[replayGen - 1];
+                        player.state = 1;
+                        console.log(player); //(permanent)log the player for info
+                        backToOriginal();
+                    }
+                }
+            } else if (isBot) {
+                animate();
+                bot.collide();
+                bot.draw();
+                bot.look();
+                bot.think();
+
+                a++;
+                score = Math.round(a / 10);
+                showNumbers();
+                if (!bot.state) {
+                    ctx.drawImage(dinoDead, 30, groundLevel - bot.y - bot.h);
+                    clearInterval(loop);
+                }
+            } else if (!ifDone) {
+                if (stillAlive() == 0) { //when there's no one left
+                    findSum();
+                    population = newPop(popSize);
+                    championSaves.push(champion);
+                    console.log(championSaves);
+                    if (score >= targetScore) {
+                        ifDone = true;
+                        if (confirm("Do you want to continue evolving?")) {
+                            targetScore = prompt("What is the new target score?");
+                            ifDone = false;
+                        } else {
+                            isReplay = confirm("Do you want to replay a champion?");
+                            if (isReplay) {
+                                replayGen = prompt("Which generation?");
+                                player = championSaves[replayGen - 1];
+                                console.log(player); //(permanent)log the player for info
+                            }
+                        }
+                    }!isReplay ? gen++ : gen;
+                    backToOriginal();
+                } else {
+                    animate();
+
+                    for (let n = 0; n < popSize; n++) {
+                        if (population[n].state) {
+                            population[n].collide();
+                            population[n].draw();
+                            population[n].look();
+                            population[n].think();
+                        }
+                    }
+                    a++;
+                    score = Math.round(a / 10);
+                    gen != 1 ? showBrain(champion.input_hidden, champion.hidden_output) : {};
+                    showNumbers();
+                }
+
+            } else {
+                replay();
+                ctx.drawImage(sky, 0, 0);
+                ctx.drawImage(ground, 0, groundLevel);
+                showNumbers();
+            }
+        }
+
+        // vẽ
+        function animate() {
+            drawGround(); // vẽ đường
+            addObs(); // thêm vật cản
+            moveObs(); // di chuyển vật cản về trái
+            removeObs(); // xóa nếu vị trí ra khỏi canvas
+            drawObs(); // vẽ
+            speed += 0.001; // tăng tốc 0.001 mỗi lần
+        }
+
+        function findSum() {
+            sum = 0;
+            for (let i = 0; i < popSize; i++) {
+                sum += population[i].fitness;
+            }
+            for (let i = 0; i < popSize; i++) {
+                fitnesses.push(population[i].fitness / sum);
+            }
+        }
+
+        function stillAlive() {
+            let n = 0;
+            for (let i = 0; i < popSize; i++) {
+                population[i].state ? n++ : {};
+            }
+            return n;
+        }
+
+        function backToOriginal() {
+            Math.sqrt(champion.fitness) >= highest ?
+                (highest = Math.sqrt(champion.fitness)) : {};
+            obstacles = [];
+            speed = 3;
+            a = 0;
+            score = 0;
+            hold = 0;
+            fitnesses = [];
+            x1 = 0;
+            x2 = 840;
+        }
+
+        // thay đổi tốc độ
+
+        function changeInterval() {
+            let sliderVal = document.getElementById("slider").value;
+            document.getElementById("sliderVal").innerHTML = sliderVal;
+            interval = sliderVal;
+        }
+    </script>
+</body>
+
+</html>
